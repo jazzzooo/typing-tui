@@ -1,5 +1,9 @@
 # typing-tui
-A terminal based typing test and trainer. Inspired by [Problem Words](https://problemwords.com/) and [fasttyper](https://github.com/ickyicky/fasttyper).
+A terminal based typing test and trainer.
+Inspired by [Problem Words](https://problemwords.com/) and [fasttyper](https://github.com/ickyicky/fasttyper).
+The text you type starts out with the normal english distribution of words.
+Over time words you type slowly get reranked to be more common, whereas words you type quickly become less common.
+To see your highest ranked words, run `bzip2 -kdc words.bz2 | head`.
 
 ![Recording](./demo.gif)
 
