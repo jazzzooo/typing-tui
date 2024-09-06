@@ -1,12 +1,14 @@
 import bz2
 import curses
 import operator
+from datetime import datetime
 from itertools import accumulate, groupby
 from math import e, log
 from random import choices, random
 from statistics import median
 from string import ascii_letters as letters
 from time import perf_counter as t
+from time import time
 
 WIDTH = 51
 BACKSPACE = "KEY_BACKSPACE"
@@ -48,12 +50,17 @@ def maketext(n):
 text = sorted([maketext(50) for _ in range(201)], key=len)[100]
 
 
+def score(acc, wpm):
+    return round(acc**2.5 * wpm / 100)
+
+
 def draw(window, start, typed, c, tot):
     elapsed = t() - start if start else 0
     wpm = 12 * (c - 1) / elapsed if start and c > 1 else 0
     acc = c / tot if tot != 0 else 1
-    stats = f"wpm: {wpm:.2f}, acc: {100 * acc:.2f}%".center(WIDTH - 2)
-    window.addstr(0, 3, stats, curses.color_pair(5 if acc > 0.97 else 2))
+    stats = f"{score(100 * acc, wpm)}".center(WIDTH - 2)
+    acc_color = 5 if acc > 0.98 else (4 if acc > 0.97 else 2)
+    window.addstr(0, 3, stats, curses.color_pair(acc_color))
     window.move(1, 1)
     window.clrtoeol()
 
@@ -70,7 +77,7 @@ def draw(window, start, typed, c, tot):
     window.refresh()
 
 
-def process_times(times):
+def process_times(times, verbose):
     assert len(times) + 1 == len(text.split())
     word_stats = {}
     for punctuated_word, duration in zip(text.split()[1:], times):
@@ -86,7 +93,8 @@ def process_times(times):
         old = word_list.index(word) + 1
         new = old * cps / test_median
         rounded = max(1, round(new))
-        print(f"{12 * cps:6.2f} {word:18} {old:6} -> {rounded:6}")
+        if verbose or rounded < 100:
+            print(f"{12 * cps:6.2f} {word:18} {old:6} -> {rounded:6}")
         if old != rounded:
             relocations[word] = new
     for word in relocations:
@@ -96,6 +104,16 @@ def process_times(times):
 
     with bz2.open("words.bz2", "wt", compresslevel=9) as f:
         f.write("\n".join(word_list))
+
+
+def leaderboard(timestamp):
+    with open("log") as logfile:
+        log = [list(map(float, line.split(","))) for line in logfile]
+    top = sorted(log, key=lambda line: score(line[1], line[2]), reverse=True)[:20]
+    for line in top:
+        current = int(line[3]) == timestamp
+        points = score(line[1], line[2])
+        print(f"{points:6} {datetime.fromtimestamp(line[3])}{'<-' * current}")
 
 
 def init(screen):
@@ -149,8 +167,17 @@ def main(screen):
 
 
 start_time, correct_chars, total_chars, time_list = curses.wrapper(main)
+process_times(time_list, verbose=False)
+print("-" * 42)
+
 final_time = t() - start_time
 final_wpm = 12 * len(text[:-1]) / final_time
 final_acc = 100 * correct_chars / total_chars
-process_times(time_list)
+print(f"score: {score(final_acc, final_wpm)}")
 print(f"time: {final_time:.2f}s, acc: {final_acc:.2f}%, wpm: {final_wpm:.2f}")
+print("-" * 42)
+
+timestamp = int(time())
+with open("log", "a") as f:
+    f.write(f"{final_time},{final_acc},{final_wpm},{timestamp}\n")
+leaderboard(timestamp)
