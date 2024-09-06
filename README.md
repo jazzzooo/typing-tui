@@ -8,14 +8,14 @@ To see your highest ranked words, run `bzip2 -kdc words.bz2 | head`.
 ![Recording](./demo.gif)
 
 ## Goals
-- Stay around 150 lines of code
+- Stay under 250 lines of code
 - Be easy to modify and extend
 - Have no external dependencies
 
 ## Non-Goals
 - Support MacOS, Windows and other non-standard terminals
-- Restarting tests
-- Themes, other languages, statistics
+- Themes, other languages, maintaining a proper english wordlist
+- GUI
 
 If you add a feature that some might find useful, send me a patch and I might add it to the README.
 
