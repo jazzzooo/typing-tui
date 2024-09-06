@@ -13,6 +13,7 @@ from time import time
 WIDTH = 51
 BACKSPACE = "KEY_BACKSPACE"
 CTRL_BACKSPACE = "\x08"
+VERBOSE = False
 
 
 def freq(rank):
@@ -77,7 +78,7 @@ def draw(window, start, typed, c, tot):
     window.refresh()
 
 
-def process_times(times, verbose):
+def process_times(times):
     assert len(times) + 1 == len(text.split())
     word_stats = {}
     for punctuated_word, duration in zip(text.split()[1:], times):
@@ -93,7 +94,7 @@ def process_times(times, verbose):
         old = word_list.index(word) + 1
         new = old * cps / test_median
         rounded = max(1, round(new))
-        if verbose or rounded < 100:
+        if VERBOSE or rounded < 100:
             print(f"{12 * cps:6.2f} {word:18} {old:6} -> {rounded:6}")
         if old != rounded:
             relocations[word] = new
@@ -167,7 +168,7 @@ def main(screen):
 
 
 start_time, correct_chars, total_chars, time_list = curses.wrapper(main)
-process_times(time_list, verbose=False)
+process_times(time_list)
 print("-" * 42)
 
 final_time = t() - start_time
