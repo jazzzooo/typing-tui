@@ -1,5 +1,6 @@
 import bz2
 import curses
+import operator
 from itertools import accumulate, groupby
 from math import e, log
 from random import choices, random
@@ -19,14 +20,14 @@ def freq(rank):
 
 with bz2.open("words.bz2", "rt") as fp:
     word_list = list(map(str.strip, fp.readlines()))
-length_weights = list(accumulate(map(lambda L: 1.1 * L * 0.90**L, range(1, 31))))
+length_weights = list(accumulate(1.1 * L * 0.90**L for L in range(1, 31)))
 word_weights = list(accumulate(map(freq, range(len(word_list)))))
 
 
 def maketext(n):
     words = [
-        x[0] + ("," if random() < 0.0884 else "")
-        for x in groupby(choices(word_list, cum_weights=word_weights, k=int(n * 1.5)))
+        word + ("," if random() < 0.0884 else "")
+        for word, _ in groupby(choices(word_list, cum_weights=word_weights, k=int(n * 1.5)))
     ][:n]
     assert len(words) == n
     words[0] = words[0].capitalize()
@@ -35,25 +36,23 @@ def maketext(n):
         c += sl
         if c >= n:
             break
-        if words[c][-1] == ",":
-            words[c] = words[c]
-        words[c] = (words[c][:-1] if words[c][-1] == "," else words[c]) + "."
+        words[c] = words[c].rstrip(",") + "."
         if c + 1 < n:
             words[c + 1] = words[c + 1].capitalize()
     else:
-        raise Exception
+        msg = "word generation failed, unlucky, try again"
+        raise RuntimeError(msg)
     return " ".join(words)
 
 
-texts = [maketext(50) for _ in range(201)]
-text = sorted(texts, key=len)[100]
+text = sorted([maketext(50) for _ in range(201)], key=len)[100]
 
 
 def draw(window, start, typed, c, tot):
     elapsed = t() - start if start else 0
     wpm = 12 * (c - 1) / elapsed if start and c > 1 else 0
     acc = c / tot if tot != 0 else 1
-    stats = f"wpm: {wpm:.2f}, acc: {100*acc:.2f}%".center(WIDTH - 2)
+    stats = f"wpm: {wpm:.2f}, acc: {100 * acc:.2f}%".center(WIDTH - 2)
     window.addstr(0, 3, stats, curses.color_pair(5 if acc > 0.97 else 2))
     window.move(1, 1)
     window.clrtoeol()
@@ -65,8 +64,8 @@ def draw(window, start, typed, c, tot):
             continue
         if pos > WIDTH:
             break
-        char = "_" if color == 2 and char == " " else char
-        window.addstr(1, pos, char, curses.color_pair(color))
+        ch = "_" if color == 2 and char == " " else char
+        window.addstr(1, pos, ch, curses.color_pair(color))
     window.move(1, WIDTH // 2 + 1)
     window.refresh()
 
@@ -74,26 +73,25 @@ def draw(window, start, typed, c, tot):
 def process_times(times):
     assert len(times) + 1 == len(text.split())
     word_stats = {}
-    for word, time in zip(text.split()[1:], times):
-        word = word.replace(",", "").replace(".", "")
-        if word[0].isupper():
-            continue
-        word_stats[word] = word_stats[word] + [time] if word in word_stats else [time]
+    for punctuated_word, duration in zip(text.split()[1:], times):
+        word = punctuated_word.replace(",", "").replace(".", "")
+        if word[0].islower():
+            word_stats.setdefault(word, []).append(duration)
 
     averages = {k: len(k) * len(v) / sum(v) for k, v in word_stats.items()}
-    med = median(averages.values())
+    test_median = median(averages.values())
 
     relocations = {}
-    for word, cps in sorted(averages.items(), key=lambda x: x[1]):
+    for word, cps in sorted(averages.items(), key=operator.itemgetter(1)):
         old = word_list.index(word) + 1
-        new = old * cps / med
+        new = old * cps / test_median
         rounded = max(1, round(new))
         print(f"{12 * cps:6.2f} {word:18} {old:6} -> {rounded:6}")
         if old != rounded:
             relocations[word] = new
     for word in relocations:
         word_list.remove(word)
-    for word, index in sorted(relocations.items(), key=lambda x: x[1]):
+    for word, index in sorted(relocations.items(), key=operator.itemgetter(1)):
         word_list.insert(max(0, round(index - 1)), word)
 
     with bz2.open("words.bz2", "wt", compresslevel=9) as f:
@@ -156,5 +154,3 @@ final_wpm = 12 * len(text[:-1]) / final_time
 final_acc = 100 * correct_chars / total_chars
 process_times(time_list)
 print(f"time: {final_time:.2f}s, acc: {final_acc:.2f}%, wpm: {final_wpm:.2f}")
-if final_acc < 97:
-    print("please slow down on difficult words to improve your accuracy and speed")
