@@ -8,8 +8,9 @@ from random import choices, random
 from statistics import median
 from string import ascii_letters as letters
 from time import perf_counter as t
-from time import time
+from time import sleep, time
 
+TEST_LENGTH = 270
 WIDTH = 51
 BACKSPACE = "KEY_BACKSPACE"
 CTRL_BACKSPACE = "\x08"
@@ -48,7 +49,8 @@ def maketext(n):
     return " ".join(words)
 
 
-text = sorted([maketext(50) for _ in range(201)], key=len)[100]
+text = maketext(100)
+assert len(text) >= TEST_LENGTH
 
 
 def score(acc, wpm):
@@ -79,7 +81,6 @@ def draw(window, start, typed, c, tot):
 
 
 def process_times(times):
-    assert len(times) + 1 == len(text.split())
     word_stats = {}
     for punctuated_word, duration in zip(text.split()[1:], times):
         word = punctuated_word.replace(",", "").replace(".", "")
@@ -151,8 +152,8 @@ def main(screen):
         elif len(char) == 1:
             typed += char
             total += 1
-            correct += len(typed) <= len(text) and char == text[len(typed) - 1]
-            if len(text) >= len(typed) > top and text[: len(typed)] == typed:
+            correct += len(typed) <= TEST_LENGTH and typed == text[: len(typed)]
+            if TEST_LENGTH >= len(typed) > top and text[: len(typed)] == typed:
                 top = len(typed)
                 if word_time and (text == typed or text[len(typed)] not in letters):
                     # word ended
@@ -162,17 +163,18 @@ def main(screen):
                     # word began
                     word_time = t()
 
-        if typed == text:
+        if typed == text[:TEST_LENGTH]:
             break
     return start, correct, total, word_times
 
 
 start_time, correct_chars, total_chars, time_list = curses.wrapper(main)
+sleep(0.6)
 process_times(time_list)
 print("-" * 42)
 
 final_time = t() - start_time
-final_wpm = 12 * len(text[:-1]) / final_time
+final_wpm = 12 * (TEST_LENGTH - 1) / final_time
 final_acc = 100 * correct_chars / total_chars
 print(f"score: {score(final_acc, final_wpm)}")
 print(f"time: {final_time:.2f}s, acc: {final_acc:.2f}%, wpm: {final_wpm:.2f}")
