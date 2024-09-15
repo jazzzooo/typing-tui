@@ -170,6 +170,7 @@ def main(screen):
 
 start_time, correct_chars, total_chars, time_list = curses.wrapper(main)
 sleep(0.6)
+print("   wpm word             old rank  new rank")
 process_times(time_list)
 print("-" * 42)
 
