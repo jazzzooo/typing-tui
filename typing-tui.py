@@ -54,14 +54,14 @@ assert len(text) >= TEST_LENGTH
 
 
 def score(acc, wpm):
-    return round(acc**2.5 * wpm / 100)
+    return round(acc**2.5 * wpm * 1000)
 
 
 def draw(window, start, typed, c, tot):
     elapsed = t() - start if start else 0
     wpm = 12 * (c - 1) / elapsed if start and c > 1 else 0
     acc = c / tot if tot != 0 else 1
-    stats = f"{score(100 * acc, wpm)}".center(WIDTH - 2)
+    stats = f"{score(acc, wpm)}".center(WIDTH - 2)
     acc_color = 5 if acc > 0.98 else (4 if acc > 0.97 else 2)
     window.addstr(0, 3, stats, curses.color_pair(acc_color))
     window.move(1, 1)
@@ -111,10 +111,10 @@ def process_times(times):
 def leaderboard(timestamp):
     with open("log") as logfile:
         log = [list(map(float, line.split(","))) for line in logfile]
-    top = sorted(log, key=lambda line: score(line[1], line[2]), reverse=True)[:20]
+    top = sorted(log, key=lambda line: score(line[1] / 100, line[2]), reverse=True)[:20]
     for line in top:
         current = int(line[3]) == timestamp
-        points = score(line[1], line[2])
+        points = score(line[1] / 100, line[2])
         print(f"{points:6} {datetime.fromtimestamp(line[3])}{'<-' * current}")
 
 
@@ -176,12 +176,12 @@ print("-" * 42)
 
 final_time = t() - start_time
 final_wpm = 12 * (TEST_LENGTH - 1) / final_time
-final_acc = 100 * correct_chars / total_chars
+final_acc = correct_chars / total_chars
 print(f"score: {score(final_acc, final_wpm)}")
-print(f"time: {final_time:.2f}s, acc: {final_acc:.2f}%, wpm: {final_wpm:.2f}")
+print(f"time: {final_time:.2f}s, acc: {final_acc:.2%}, wpm: {final_wpm:.2f}")
 print("-" * 42)
 
 timestamp = int(time())
 with open("log", "a") as f:
-    f.write(f"{final_time},{final_acc},{final_wpm},{timestamp}\n")
+    f.write(f"{final_time},{final_acc * 100},{final_wpm},{timestamp}\n")
 leaderboard(timestamp)
