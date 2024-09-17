@@ -57,17 +57,17 @@ def score(acc, wpm):
     return round(acc**2.5 * wpm * 1000)
 
 
-def draw(window, start, typed, c, tot):
+def draw(window, start, typed, correct, total):
     elapsed = t() - start if start else 0
-    wpm = 12 * (c - 1) / elapsed if start and c > 1 else 0
-    acc = c / tot if tot != 0 else 1
+    wpm = 12 * (correct - 1) / elapsed if start and correct > 1 else 0
+    acc = correct / total if total != 0 else 1
     stats = f"{score(acc, wpm)}".center(WIDTH - 2)
     acc_color = 5 if acc > 0.98 else (4 if acc > 0.97 else 2)
     window.addstr(0, 3, stats, curses.color_pair(acc_color))
     window.move(1, 1)
     window.clrtoeol()
 
-    colors = [3 if c == u else 2 for c, u in zip(text, typed)] + [9] * WIDTH
+    colors = [3 if correct == u else 2 for correct, u in zip(text, typed)] + [9] * WIDTH
     for i, (char, color) in enumerate(zip(text, colors)):
         pos = WIDTH // 2 + i + 1 - len(typed)
         if pos <= 0:
